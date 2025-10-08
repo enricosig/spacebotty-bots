@@ -1,4 +1,4 @@
-# apps/linkedin/api/telegram.py
+# api/telegram.py
 import os, json, datetime, requests, traceback
 from textwrap import dedent
 from urllib.parse import quote_plus
@@ -124,27 +124,30 @@ def llm(prompt):
     except Exception:
         return "⚠️ OpenAI request failed. Please try again."
 
-# ===== LinkedIn helpers =====
+# ===== LinkedIn helpers (USANO /api/oauth/* e /api/post*) =====
 def li_connected(uid):
     return bool(rget(li_token_key(uid)) and rget(li_profile_key(uid)))
 
 def connect_button(uid):
-    url = f"{PUBLIC_BASE_URL}/api/linkedin/oauth/start?uid={uid}"
+    url = f"{PUBLIC_BASE_URL}/api/oauth/start?uid={uid}"
     return {"inline_keyboard":[[{"text":"🔗 Connect LinkedIn","url": url}]]}
 
 def btn_post_text(uid, text):
-    url = f"{PUBLIC_BASE_URL}/api/linkedin/post?uid={uid}&text={quote_plus(text)}"
+    # testo puro: handler /api/post
+    url = f"{PUBLIC_BASE_URL}/api/post?uid={uid}&text={quote_plus(text)}"
     return {"inline_keyboard":[[{"text":"📤 Post on LinkedIn","url": url}]]}
 
 def btn_post_image(uid, text, image_url):
-    url = f"{PUBLIC_BASE_URL}/api/linkedin/post_media?uid={uid}&image_url={quote_plus(image_url)}&text={quote_plus(text)}"
+    # singola immagine: handler /api/post_media
+    url = f"{PUBLIC_BASE_URL}/api/post_media?uid={uid}&image_url={quote_plus(image_url)}&text={quote_plus(text)}"
     return {"inline_keyboard":[[{"text":"📸 Post with image","url": url}]]}
 
 def btn_post_album(uid, text, image_urls, captions=None):
+    # più immagini: handler /api/post_media_multi
     qs = "&".join([f"image_url={quote_plus(u)}" for u in image_urls])
     if captions:
         qs += "&" + "&".join([f"image_caption={quote_plus(c)}" for c in captions])
-    url = f"{PUBLIC_BASE_URL}/api/linkedin/post_media_multi?uid={uid}&{qs}&text={quote_plus(text)}"
+    url = f"{PUBLIC_BASE_URL}/api/post_media_multi?uid={uid}&{qs}&text={quote_plus(text)}"
     return {"inline_keyboard":[[{"text":"🖼️ Post album","url": url}]]}
 
 # ===== Commands =====
@@ -303,12 +306,6 @@ Topic: {topic}""")
     reply(chat_id, post_text + "\n\n(Attached image: " + image_url + ")", keyboard=kb); inc_quota(uid)
 
 def _parse_album_payload(payload):
-    """
-    Supports two formats:
-    A) Quick URLs (auto captions):  "Topic | https://img1 ... https://imgN"
-    B) Custom captions:            "Topic || url1::caption1 || url2::caption2 ..."
-    Returns: topic, [(url, caption_or_None), ...]
-    """
     if "||" in payload:
         topic, rest = [p.strip() for p in payload.split("||", 1)]
         pairs = []
@@ -321,7 +318,6 @@ def _parse_album_payload(payload):
             else:
                 pairs.append((seg.strip(), None))
         return topic, pairs
-    # quick
     topic, urls_blob = [p.strip() for p in payload.split("|", 1)]
     urls = [u for u in urls_blob.split() if u.startswith("http")]
     return topic, [(u, None) for u in urls]
@@ -336,7 +332,6 @@ def do_postimgs(chat_id, uid, payload):
 
     if not ensure_quota_or_block(chat_id, uid): return
 
-    # Generate post body
     post_prompt = dedent(f"""Write a *LinkedIn carousel-style post* that pairs with multiple images.
 - Hook (1 line)
 - 5–8 short lines (carousel tips / steps)
@@ -344,7 +339,6 @@ def do_postimgs(chat_id, uid, payload):
 Topic: {topic}""")
     post_text = llm(post_prompt)
 
-    # Prepare captions, generate if missing
     provided_caps = [cap for (_, cap) in pairs]
     if any(c is None for c in provided_caps):
         n = len(image_urls)
@@ -353,7 +347,6 @@ Keep them actionable and non-repetitive. Topic: {topic}
 Return each caption on its own line, no numbering.""")
         caps_text = llm(caps_prompt)
         auto_caps = [c.strip(" -•\t") for c in caps_text.splitlines() if c.strip()]
-        # pad or trim to n
         if len(auto_caps) < n: auto_caps += [""]*(n-len(auto_caps))
         if len(auto_caps) > n: auto_caps = auto_caps[:n]
         captions = [pc if pc is not None else auto_caps[i] for i, pc in enumerate(provided_caps)]
@@ -364,6 +357,19 @@ Return each caption on its own line, no numbering.""")
     preview = "\n".join([f"{i+1}) {image_urls[i]} — {captions[i]}" for i in range(len(image_urls))])
     reply(chat_id, post_text + "\n\nSlides:\n" + preview, keyboard=kb); inc_quota(uid)
 
+# (placeholder simple versions)
+def do_comment(chat_id, uid, topic):
+    if not ensure_quota_or_block(chat_id, uid): return
+    if not topic: reply(chat_id, "Give me a topic: /comment product-led growth"); return
+    prompt = f"Write 5 concise LinkedIn comments (1-2 lines) on: {topic}"
+    reply(chat_id, llm(prompt)); inc_quota(uid)
+
+def do_contentplan(chat_id, uid, topic):
+    if not ensure_quota_or_block(chat_id, uid): return
+    if not topic: reply(chat_id, "Give me a niche: /contentplan AI for B2B sales"); return
+    prompt = f"Create a 7-day LinkedIn content plan for: {topic}. Each day: title + 2 bullets."
+    reply(chat_id, llm(prompt)); inc_quota(uid)
+
 # ===== HTTP handler =====
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -372,15 +378,18 @@ class handler(BaseHTTPRequestHandler):
             update = json.loads(body.decode("utf-8"))
 
             if "pre_checkout_query" in update:
-                handle_pre_checkout(update["pre_checkout_query"]); return self._ok()
+                tg("answerPreCheckoutQuery", {"pre_checkout_query_id": update["pre_checkout_query"]["id"], "ok": True})
+                return self._ok()
 
             cb = update.get("callback_query")
             if cb:
                 data = cb.get("data","")
                 chat_id = cb["message"]["chat"]["id"]
                 uid = cb["from"]["id"]
-                if data == "buy_daily": cmd_buy_plan(chat_id, uid, "daily")
-                elif data == "buy_monthly": cmd_buy_plan(chat_id, uid, "monthly")
+                if data == "buy_daily": send_invoice(chat_id, f"Daily Premium ({DAILY_DAYS} day)",
+                                                     f"Unlimited prompts for {DAILY_DAYS} day", DAILY_PRICE_EUR, "premium-daily")
+                elif data == "buy_monthly": send_invoice(chat_id, f"Monthly Premium ({PREMIUM_DAYS} days)",
+                                                         f"Unlimited prompts for {PREMIUM_DAYS} days", PREMIUM_PRICE_EUR, "premium-monthly")
                 tg("answerCallbackQuery", {"callback_query_id": cb["id"], "text": "Processing..."})
                 return self._ok()
 
