@@ -1,3 +1,4 @@
+Set-Content -Path .github/workflows/deploy-vercel.yml -Value @'
 name: Deploy to Vercel
 
 on:
@@ -5,16 +6,81 @@ on:
     branches: [ main, master ]
 
 jobs:
-  deploy:
+  deploy-linkedin:
+    if: ${{ secrets.VERCEL_PROJECT_ID_LINKEDIN != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 'lts/*'
-          cache: 'npm'
-      - name: Install dependencies
-        run: npm ci
-      - name: Vercel CLI
+          node-version: "lts/*"
+      - name: Install Vercel CLI
         run: npm i -g vercel@latest
-      - run: echo 'No deployable apps detected'
+      - name: Deploy linkedin (Preview)
+        working-directory: apps/linkedin
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_LINKEDIN }}
+        run: vercel deploy --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --yes
+      - name: Deploy linkedin (Production)
+        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+        working-directory: apps/linkedin
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_LINKEDIN }}
+        run: vercel deploy --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --yes
+
+  deploy-creators:
+    if: ${{ secrets.VERCEL_PROJECT_ID_CREATORS != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+      - name: Deploy creators (Preview)
+        working-directory: apps/creators
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_CREATORS }}
+        run: vercel deploy --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --yes
+      - name: Deploy creators (Production)
+        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+        working-directory: apps/creators
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_CREATORS }}
+        run: vercel deploy --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --yes
+
+  deploy-secondhand:
+    if: ${{ secrets.VERCEL_PROJECT_ID_SECONDHAND != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+      - name: Install Vercel CLI
+        run: npm i -g vercel@latest
+      - name: Deploy secondhand (Preview)
+        working-directory: apps/secondhand
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_SECONDHAND }}
+        run: vercel deploy --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --yes
+      - name: Deploy secondhand (Production)
+        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+        working-directory: apps/secondhand
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_SECONDHAND }}
+        run: vercel deploy --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --yes
+'@

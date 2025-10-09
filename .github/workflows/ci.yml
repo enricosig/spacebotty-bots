@@ -1,3 +1,4 @@
+Set-Content -Path .github/workflows/ci.yml -Value @'
 name: CI
 
 on:
@@ -7,17 +8,20 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build:
+  check-python-functions:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 'lts/*'
-          cache: 'npm'
-      - name: Install dependencies
-        run: npm ci
-      - name: Build all
+      - name: Show tree
         run: |
-          npm run -v || true
-          echo 'No apps detected to build'
+          ls -la
+          ls -la apps
+          ls -la apps/linkedin/api
+      - name: Validate vercel.json exist
+        run: |
+          test -f apps/linkedin/vercel.json
+          test -f apps/creators/vercel.json
+          test -f apps/secondhand/vercel.json
+      - name: Basic lint (optional)
+        run: echo "OK - Python functions monorepo (no build step required)"
+'@
