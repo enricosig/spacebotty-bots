@@ -1,5 +1,5 @@
 {
-  "": "https://openapi.vercel.sh/vercel.json",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "functions": {
     "api/**/*.py": {
