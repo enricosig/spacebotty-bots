@@ -1,5 +1,10 @@
 {
   "": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "functions": { "api/**/*.py": { "memory": 1024, "maxDuration": 10 } }
+  "functions": {
+    "api/**/*.py": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  }
 }
