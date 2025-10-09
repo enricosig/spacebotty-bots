@@ -1,1 +1,0 @@
-Run setup.sh after deploy to set all webhooks. Requires curl (and jq for pretty output).

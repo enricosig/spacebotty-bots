@@ -1,10 +1,20 @@
-# AI Bots Monorepo (Telegram + Vercel) — EN
+# Spacebotty — Telegram + OpenAI Bot (Serverless on Vercel)
 
-Three serverless Telegram bots ready for Vercel deployment, with freemium, redeem, **Telegram Payments (/buy)**, presets, and **Premium with expiry (30 days)** via Upstash Redis.
+A simple Telegram bot deployed as Vercel Serverless Functions.
+Generates LinkedIn-style content via OpenAI.
 
-Apps:
-- `apps/linkedin` — LinkedIn Growth AI
-- `apps/creators` — Creators AI (IG/TikTok)
-- `apps/secondhand` — Secondhand Seller AI (Vinted/Subito/eBay)
+## Commands
+/start — shows the inline menu  
+/openers <topic> — generates 10 hooks  
+/post <topic> — generates a full post  
 
-See `STEP_BY_STEP.md` for a guided install.
+## Deployment
+- Push this folder to GitHub
+- Import to Vercel (project root = this folder)
+- Add the Environment Variables below
+- Deploy!
+
+## Telegram Webhook
+After deploy:
+https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<YOUR_DOMAIN>/api/telegram
+
