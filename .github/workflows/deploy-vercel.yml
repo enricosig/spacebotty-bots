@@ -1,7 +1,8 @@
-Set-Content -Path .github/workflows/deploy-vercel.yml -Value @'
+Set-Content .github/workflows/deploy-vercel.yml -Value @'
 name: Deploy to Vercel
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main, master ]
 
